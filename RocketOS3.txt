@@ -1,0 +1,142 @@
+@name RocketOS3
+@inputs EGP:wirelink DHHD:wirelink User:entity OutputChar:string 
+@outputs
+@persist State:string Keyboard_Data:array Current_Line Max_Lines Memory:array
+@persist Colors:table
+@trigger
+runOnTick(1)
+Cursor = EGP:egpCursor(User)      
+if (first() | duped()) {
+#Load RocketCore
+ 
+    Colors = table(
+        "red" = vec(255,0,0),
+        "green" = vec(0,255,0),
+        "blue" = vec(0,0,255),
+        "white" = vec(255),
+        "black" = vec(0)
+    )
+    ## KEYBOARD SERVICE
+    function string keyboardservice_read(Number) {
+        return Keyboard_Data[Number,string] 
+    }
+    function keyboardservice_write(Number,String:string) {
+        Keyboard_Data[Number,string]=String
+    }
+    function keyboardservice_delete(Number) {
+        Keyboard_Data:remove(Number)
+    }
+    
+    ## DHHD SERVICE
+    function dhddservice_write(Number,String:string) {
+        DHHD["AllowWrite",number] = 1
+        DHHD["Data",array][Number,string] = String
+        timer("DWrite",250)
+    }
+    function string dhddservice_read(Number) {
+        return DHHD["Memory",array][Number,string]
+    }
+    
+    function dhddservice_write(Number,Vec:vector) {
+        DHHD["AllowWrite",number] = 1
+        DHHD["Data",array][Number,vector] = Vec
+        timer("DWrite",250)
+    }
+    function vector dhddservice_readVec(Number) {
+        return DHHD["Memory",array][Number,vector]
+    }
+    
+    ## MOUSE SERVICE
+    function number mouseservice_locatemouse(Index) {
+        return inrange(EGP:egpCursor(EGP["User",entity]),EGP:egpPos(Index)-EGP:egpSize(Index),EGP:egpPos(Index)+EGP:egpSize(Index))
+    }
+    function number mouseservice_LeftClick() {
+        return User:keyAttack1()
+    }
+    function number mouseservice_RightClick() {
+        return User:keyAttack2()
+    }
+    function mouseservice_LoadCursor() {
+        EGP:egpCircle(2,vec2(1,1),vec2(10,10))
+        EGP:egpParentToCursor(2)
+    }
+    
+    local BG = dhddservice_readVec(1)
+    EGP:egpClear()
+    EGP:egpBox(1,vec2(512)/2,vec2(512))
+    EGP:egpColor(1,BG)
+    
+    local FG = dhddservice_readVec(2)
+    if(FG == vec(0)) {FG = vec(255)}
+    EGP:egpText(10,"Loading Core Services ",vec2(1,1))  ,EGP:egpColor(10,FG) 
+    EGP:egpText(11,"Loading RocketOS3 Shell Beta 1.0",vec2(1,15)),EGP:egpColor(11,FG) 
+    EGP:egpText(12,"Copyright (c) TMinusBlastedRocket & Skyrox 2018",vec2(1,30))                       ,EGP:egpColor(12,FG) 
+    
+
+    Current_Line = 1
+    Max_Lines = 100
+    local Z = 55
+    for(I = 1,Max_Lines) {
+        EGP:egpText(I+12,"",vec2(1,Z)) 
+        EGP:egpColor(I+12,FG) 
+        Z+= 15
+    }
+    printTable(DHHD["Memory",array])
+    State="LoadUI"
+}
+if (State=="LoadUI") {
+    if(changed(OutputChar) & !User:keyPressed("Enter")) {
+        keyboardservice_write(Current_Line,keyboardservice_read(Current_Line)+OutputChar)
+    } 
+    if(keyboardservice_read(Current_Line):length()<55) {
+        local Shell_String = ">"
+        if(Current_Line == 1) {
+            Shell_String = "Shell>"
+        }
+        EGP:egpSetText(Current_Line+12,Shell_String+keyboardservice_read(Current_Line))
+    }
+    elseif(Current_Line < Max_Lines) {
+        Current_Line++
+    }
+    if(changed(User:keyPressed("BackSpace")) & User:keyPressed("BackSpace") & keyboardservice_read(0):length() > 0) {   
+        local Read = keyboardservice_read(Current_Line)
+        if(Current_Line > 1 & Read:length() == 0) {
+            EGP:egpSetText(Current_Line+12,"")
+            keyboardservice_delete(Current_Line)
+            Current_Line--
+            Read = keyboardservice_read(Current_Line)
+            keyboardservice_write(Current_Line,Read:sub(0,Read:length()-1))
+        } 
+        else {
+            keyboardservice_write(Current_Line,Read:sub(0,Read:length()-1))
+        }
+    }
+    if(changed(User:keyPressed("Enter")) & User:keyPressed("Enter") & keyboardservice_read(0):length() > 0) {      
+        local Arr = keyboardservice_read(Current_Line)
+        local Command = Arr:explode(" ")
+        Current_Line++
+        if(Command[1,string] == "setbg") {
+            local Vec = Colors[Command[2,string],vector]
+            EGP:egpColor(1,Vec)
+            EGP:egpSetText(Current_Line+12,"> Setting Background Color to "+Vec)
+            Current_Line++
+            dhddservice_write(1,Vec)
+        }
+        elseif(Command[1,string] == "setfg") {
+            local Vec = Colors[Command[2,string],vector]
+            EGP:egpColor(10,Vec) 
+            EGP:egpColor(11,Vec) 
+            EGP:egpColor(12,Vec) 
+            for(I = 1,Max_Lines) {
+                EGP:egpColor(I+12,Vec) 
+            }
+            EGP:egpSetText(Current_Line+12,"> Setting Foreground Color to "+Vec)
+            Current_Line++
+            dhddservice_write(2,Vec)
+        }
+    }
+}
+
+if(clk("DWrite")) {
+    DHHD["AllowWrite",number] = 0
+}
