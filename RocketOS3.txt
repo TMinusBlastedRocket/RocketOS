@@ -1,9 +1,10 @@
 @name RocketOS3
-@inputs EGP:wirelink DHHD:wirelink User:entity OutputChar:string 
+@inputs EGP:wirelink DHHD:wirelink User:entity OutputChar:string Power
 @outputs
 @persist State:string Keyboard_Data:array Current_Line Max_Lines Memory:array
-@persist Colors:table
+@persist Colors:table SelectedSong PlayState ListSize ListStart ListEnd User:entity Volume 
 @trigger
+Power=1
 runOnTick(1)
 Cursor = EGP:egpCursor(User)      
 if (first() | duped()) {
@@ -98,7 +99,7 @@ if (State=="LoadUI") {
     elseif(Current_Line < Max_Lines) {
         Current_Line++
     }
-    if(changed(User:keyPressed("BackSpace")) & User:keyPressed("BackSpace") & keyboardservice_read(0):length() > 0) {   
+    if(changed(User:keyPressed("BackSpace")) & User:keyPressed("BackSpace") & keyboardservice_read(1):length() > 0) {   
         local Read = keyboardservice_read(Current_Line)
         if(Current_Line > 1 & Read:length() == 0) {
             EGP:egpSetText(Current_Line+12,"")
@@ -111,7 +112,7 @@ if (State=="LoadUI") {
             keyboardservice_write(Current_Line,Read:sub(0,Read:length()-1))
         }
     }
-    if(changed(User:keyPressed("Enter")) & User:keyPressed("Enter") & keyboardservice_read(0):length() > 0) {      
+    if(changed(User:keyPressed("Enter")) & User:keyPressed("Enter") & keyboardservice_read(1):length() > 0) {      
         local Arr = keyboardservice_read(Current_Line)
         local Command = Arr:explode(" ")
         Current_Line++
@@ -134,9 +135,280 @@ if (State=="LoadUI") {
             Current_Line++
             dhddservice_write(2,Vec)
         }
+          if(Command[1,string] == "Music") {
+            EGP:egpSetText(Current_Line+12,">Starting Music App")
+            Current_Line++
+            
+
+# List of available sounds
+Songs = table()
+Songs["hl1_song25_remix3", string] = "music/hl1_song25_remix3.mp3"
+Songs["hl2_song25_teleporter", string] = "music/hl2_song25_teleporter.mp3"
+Songs["mannrobics", string] = "music/mannrobics.wav"
+Songs["mvm_class_menu_bg", string] = "music/mvm_class_menu_bg.wav"
+Songs["ravenholm_1", string] = "music/ravenholm_1.mp3"
+Songs["misfortune_teller", string] = "music/misfortune_teller.wav"
+Songs["bump_in_the_night", string] = "music/bump_in_the_night.wav"
+Songs["cossack_sandvich", string] = "music/cossack_sandvich.wav"
+Songs["fortress_reel", string] = "music/fortress_reel.wav"
+Songs["hl1_song10", string] = "music/hl1_song10.mp3"
+Songs["hl1_song14", string] = "music/hl1_song14.mp3"
+Songs["hl1_song15", string] = "music/hl1_song15.mp3"
+Songs["hl2_song12_long", string] = "music/hl2_song12_long.mp3"
+Songs["hl2_song20_submix0", string] = "music/hl2_song20_submix0.mp3"
+Songs["hl2_song20_submix4", string] = "music/hl2_song20_submix4.mp3"
+Songs["hl2_song23_suitsong3", string] = "music/hl2_song23_suitsong3.mp3"
+Songs["hl2_song26", string] = "music/hl2_song26.mp3"
+Songs["hl2_song29", string] = "music/hl2_song29.mp3"
+Songs["hl2_song3", string] = "music/hl2_song3.mp3"
+Songs["hl2_song31", string] = "music/hl2_song31.mp3"
+Songs["hl2_song32", string] = "music/hl2_song32.mp3"
+Songs["hl2_song4", string] = "music/hl2_song4.mp3"
+Songs["hl2_song6", string] = "music/hl2_song6.mp3"
+Songs["carousel_of_curses", string] = "music/carousel_of_curses.wav"
+
+####
+# Begin sound utility methods
+####
+function stopSounds() {
+    soundPurge()
+    
+    stopAllTimers()
+}
+
+function playSound() {
+    local SoundFile = Songs[Songs:keys()[SelectedSong, string], string]
+    Duration = ceil(soundDuration(SoundFile)) + 5
+    print("playing sound: " + SoundFile + ", duration: " + Duration)
+    stopSounds()
+    entity():soundPlay(0, Duration - 2, SoundFile, 2)
+    soundVolume(0, Volume)
+    
+    # TODO: Fix the below
+    timer("AudioPlayerSound", Duration * 1000)
+}
+
+function updateSoundVolume() {
+    soundVolume(0, Volume)
+}
+####
+# End sound utility methods
+####
+
+function drawInitialUI() {
+    
+    # Title
+    EGP:egpBox(1, vec2(256, 20), vec2(512, 40))
+    EGP:egpBoxOutline(2, vec2(256, 21), vec2(506, 40))
+    EGP:egpColor(2, vec4(255, 0, 0, 255))
+    EGP:egpText(3, "AudioPlayer", vec2(256, 20))
+    EGP:egpColor(3, vec4(0, 0, 0, 255))
+    EGP:egpAlign(3, 1, 1)
+    
+    # List box
+    EGP:egpBoxOutline(4, vec2(256, 241), vec2(506, 400))
+    EGP:egpColor(4, vec4(0, 255, 0, 255))
+    EGP:egpBox(5, vec2(444, 241), vec2(128, 400))
+    EGP:egpColor(5, vec4(0, 255, 0, 255))
+    EGP:egpCircle(6, vec2(444, 150), vec2(50, 50))
+    EGP:egpColor(6, vec4(0, 0, 255, 255))
+    EGP:egpCircle(7, vec2(444, 300), vec2(50, 50))
+    EGP:egpColor(7, vec4(0, 0, 255, 255))
+    EGP:egpText(8, "UP", vec2(435, 140))
+    EGP:egpColor(8, vec4(255, 255, 255, 255))
+    EGP:egpText(9, "DOWN", vec2(420, 290))
+    EGP:egpColor(9, vec4(255, 255, 255, 255))
+    
+    local EGPCount = 10
+    local Y = 0
+    for(I = 1, 20, 1) {
+        EGP:egpText(EGPCount, "Item " + I, vec2(5, 42 + (Y * 20)))
+        EGP:egpColor(EGPCount, vec4(255, 255, 255, 255))
+        EGP:egpSize(EGPCount, 16)
+        Y++
+        EGPCount++
+    }
+    
+    # Playbar
+    EGP:egpBox(EGPCount, vec2(256, 480), vec2(512, 80))
+    EGP:egpColor(EGPCount, vec4(0, 255, 0, 255))
+    
+    EGPCount++
+    EGP:egpCircle(EGPCount, vec2(256, 475), vec2(30, 30))
+    EGP:egpColor(EGPCount, vec4(0, 0, 255, 255))
+    EGPCount++
+    EGP:egpText(EGPCount, "Play", vec2(240, 465))
+    
+    EGPCount++
+    EGP:egpCircle(EGPCount, vec2(100, 475), vec2(30, 30))
+    EGP:egpColor(EGPCount, vec4(0, 0, 255, 255))
+    EGPCount++
+    EGP:egpText(EGPCount, "-Vol", vec2(85, 465))
+    
+    EGPCount++
+    EGP:egpCircle(EGPCount, vec2(400, 475), vec2(30, 30))
+    EGP:egpColor(EGPCount, vec4(0, 0, 255, 255))
+    EGPCount++
+    EGP:egpText(EGPCount, "+Vol", vec2(380, 465))
+    
+    # Volume bar
+    EGPCount++
+    EGP:egpBox(EGPCount, vec2(370, 240), vec2(20, 400))
+    EGP:egpColor(EGPCount, vec4(255, 0, 0, 255))
+}
+
+function updateListUI() {
+    local EGPCount = 10
+    for(I = ListStart, min(Songs:count(), ListEnd), 1) {
+        
+        # TODO: Use Start / End to get proper song name for the scrolling list
+        # Proper song names
+        if(I <= Songs:keys():count()) {
+            EGP:egpSetText(EGPCount, Songs:keys()[I, string])
+        }
+        else {
+            EGP:egpSetText(EGPCount, "")
+        }
+        
+        # Show selection
+        if(I == SelectedSong) {
+            EGP:egpColor(EGPCount, vec4(255, 0, 0, 255))
+            EGP:egpSize(EGPCount, 20)
+        }
+        else {
+            EGP:egpColor(EGPCount, vec4(255, 255, 255, 255))
+            EGP:egpSize(EGPCount, 16)
+        }
+        EGPCount++
+    }
+}
+
+####
+# Begin Click Methods
+####
+function updateSelectedSong(Direction:number) {
+    local OldSong = SelectedSong
+    if(Direction == 1) {
+        SelectedSong--
+    }
+    
+    if(Direction == 2) {
+        SelectedSong++
+    }
+    
+    SelectedSong = clamp(SelectedSong, 1, Songs:count())
+    
+    if(SelectedSong > ListEnd) {
+        ListStart++
+        ListEnd++
+    }    
+    elseif(SelectedSong < ListStart) {
+        ListStart--
+        ListEnd--
+    }
+    
+    if(OldSong != SelectedSong & PlayState == 1) {
+        playSound()
+    }
+}
+
+function updatePlayState(Play:number) {
+    if(Play == 1) {
+        PlayState = 1 
+        EGP:egpSetText(32, "Stop")
+        EGP:egpPos(32, vec2(240, 465))
+        playSound()
+    }
+    elseif(Play == 2) {
+        PlayState = 0
+        EGP:egpSetText(32, "Play")
+        EGP:egpPos(32, vec2(240, 465))
+        stopSounds()
+    }
+}
+
+function updateVolume(Direction:number) {
+    if(Direction == 2) {
+        Volume += 0.05
+    }
+    else {
+        Volume -= 0.05
+    }
+    
+    Volume = clamp(Volume, 0.05, 1.0)
+    
+    updateSoundVolume()
+    
+    # Update our UI
+    EGP:egpSize(37, vec2(20, 400 * Volume))
+}
+####
+# End Click Methods
+####
+
+function drawCursor() {
+    
+    EGP:egpCircleOutline(500, vec2(0, 0), vec2(4, 4))
+    EGP:egpParentToCursor(500)
+}
+
+function handleButtonClicks() {
+    
+    Cursor = EGP:egpCursor(User)
+    
+    # UP (6)
+    UPTopLeft = EGP:egpPos(6) - EGP:egpSize(6)/1.2
+    UPBottomRight = EGP:egpPos(6) + EGP:egpSize(6)/1.2
+    if(inrange(Cursor, UPTopLeft, UPBottomRight)) {
+        updateSelectedSong(1)
+    }
+    
+    
+    # DOWN (7)
+    UPTopLeft = EGP:egpPos(7) - EGP:egpSize(7)/1.2
+    UPBottomRight = EGP:egpPos(7) + EGP:egpSize(7)/1.2
+    if(inrange(Cursor, UPTopLeft, UPBottomRight)) {
+        updateSelectedSong(2)
+    }
+    
+    # PLAY / STOP
+    UPTopLeft = EGP:egpPos(31) - EGP:egpSize(31)/1.2
+    UPBottomRight = EGP:egpPos(31) + EGP:egpSize(31)/1.2
+    if(inrange(Cursor, UPTopLeft, UPBottomRight)) {
+        updatePlayState(PlayState == 1 ? 2 : 1)
+    }
+    
+    # -VOL
+    UPTopLeft = EGP:egpPos(33) - EGP:egpSize(33)/1.2
+    UPBottomRight = EGP:egpPos(33) + EGP:egpSize(33)/1.2
+    if(inrange(Cursor, UPTopLeft, UPBottomRight)) {
+        updateVolume(1)
+    }
+    
+    # +VOL
+    UPTopLeft = EGP:egpPos(35) - EGP:egpSize(35)/1.2
+    UPBottomRight = EGP:egpPos(35) + EGP:egpSize(35)/1.2
+    if(inrange(Cursor, UPTopLeft, UPBottomRight)) {
+        updateVolume(2)
+    }
+}
+
+function drawPowerOff() {
+    EGP:egpClear()
+    
+    EGP:egpBox(200, vec2(256, 256), vec2(512, 100))
+    EGP:egpColor(200, vec4(255, 0, 0, 255))
+    EGP:egpText(201, "POWER OFF", vec2(256, 256))
+    EGP:egpColor(201, vec4(255, 255, 255, 255))
+    EGP:egpAlign(201, 1, 1)
+    EGP:egpSize(201, 30)
+}
+
+        }
     }
 }
 
 if(clk("DWrite")) {
     DHHD["AllowWrite",number] = 0
 }
+
