@@ -70,7 +70,7 @@ if (first() | duped()) {
     local FG = dhddservice_readVec(2)
     if(FG == vec(0)) {FG = vec(255)}
     EGP:egpText(10,"Loading Core Services ",vec2(1,1))  ,EGP:egpColor(10,FG) 
-    EGP:egpText(11,"Loading RocketOS3 Shell Beta 1.0",vec2(1,15)),EGP:egpColor(11,FG) 
+    EGP:egpText(11,"Loading RocketOS3 Shell Beta 1.1",vec2(1,15)),EGP:egpColor(11,FG) 
     EGP:egpText(12,"Copyright (c) TMinusBlastedRocket & Skyrox 2018",vec2(1,30))                       ,EGP:egpColor(12,FG) 
     
 
