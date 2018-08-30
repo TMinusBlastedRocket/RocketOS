@@ -1,21 +1,27 @@
 @name RocketOS3
-@inputs EGP:wirelink DHHD:wirelink User:entity OutputChar:string Power
-@outputs
+@inputs EGP:wirelink DHHD:wirelink User:entity OutputChar:string Power EXTPortin DataIN Datafound
+@outputs EXTPortout AddrRead Clk AddrWrite DataOUT BiosFlash:entity PowerO
 @persist State:string Keyboard_Data:array Current_Line Max_Lines Memory:array
-@persist Colors:table SelectedSong PlayState ListSize ListStart ListEnd User:entity Volume 
+@persist Colors:table SelectedSong PlayState ListSize ListStart ListEnd User:entity Volume BGCOLOR:vector FGCOLOR:vector FGSCOLOR:vector Clk Syspower
 @trigger
-Power=1
+@model models/cheeze/wires/cpu.mdl
+BiosFlash=entity()
 runOnTick(1)
 Cursor = EGP:egpCursor(User)      
-if (first() | duped()) {
+PowerO=Syspower
+if (first() & Power==1 | duped() & Power==1) {
 #Load RocketCore
- 
+    Syspower=1
     Colors = table(
         "red" = vec(255,0,0),
         "green" = vec(0,255,0),
         "blue" = vec(0,0,255),
         "white" = vec(255),
-        "black" = vec(0)
+        "black" = vec(0),
+        "purple" = vec(127,0,2555),
+        "pink" = vec(255,192,203),
+        "yellow" = vec(255,255,0),
+        "teal" = vec(0,128,128)
     )
     ## KEYBOARD SERVICE
     function string keyboardservice_read(Number) {
@@ -27,7 +33,16 @@ if (first() | duped()) {
     function keyboardservice_delete(Number) {
         Keyboard_Data:remove(Number)
     }
-    
+    ## Ram Service
+    function number ramservice_read(Number) {
+        AddrRead=Number
+        return DataIN
+    }
+        function ramservice_Write(Number,Number2) {
+        Clk=1
+        AddrWrite=Number
+        DataOUT=Number2
+    }
     ## DHHD SERVICE
     function dhddservice_write(Number,String:string) {
         DHHD["AllowWrite",number] = 1
@@ -70,8 +85,8 @@ if (first() | duped()) {
     local FG = dhddservice_readVec(2)
     if(FG == vec(0)) {FG = vec(255)}
     EGP:egpText(10,"Loading Core Services ",vec2(1,1))  ,EGP:egpColor(10,FG) 
-    EGP:egpText(11,"Loading RocketOS3 Shell Beta 1.1",vec2(1,15)),EGP:egpColor(11,FG) 
-    EGP:egpText(12,"Copyright (c) TMinusBlastedRocket & Skyrox 2018",vec2(1,30))                       ,EGP:egpColor(12,FG) 
+    EGP:egpText(11,"Loading RocketOS3 Shell",vec2(1,15)),EGP:egpColor(11,FG) 
+    EGP:egpText(12,"Copyright (c) Team TMinus",vec2(1,30))                       ,EGP:egpColor(12,FG) 
     
 
     Current_Line = 1
@@ -83,17 +98,30 @@ if (first() | duped()) {
         Z+= 15
     }
     printTable(DHHD["Memory",array])
+    BGCOLOR=BG
+    FGCOLOR=FG
+    FGSCOLOR=vec(255,255,255)
     State="LoadUI"
+}elseif (changed(Power) == 1 & State!="LoadServerUI" & changed(Power) == 1 & State!="LoadUI") {
+    reset()
+}elseif (Power==0) {
+    
+    EGP:egpClear()
 }
 if (State=="LoadUI") {
+    local Said = lastSaid():explode(" ")
     if(changed(OutputChar) & !User:keyPressed("Enter")) {
         keyboardservice_write(Current_Line,keyboardservice_read(Current_Line)+OutputChar)
+    } 
+    if(Said[1,string]=="!p"&changed(lastSaid())) {
+        keyboardservice_write(Current_Line,keyboardservice_read(Current_Line)+Said[2,string])
     } 
     if(keyboardservice_read(Current_Line):length()<55) {
         local Shell_String = ">"
         if(Current_Line == 1) {
             Shell_String = "Shell>"
         }
+  
         EGP:egpSetText(Current_Line+12,Shell_String+keyboardservice_read(Current_Line))
     }
     elseif(Current_Line < Max_Lines) {
@@ -119,26 +147,131 @@ if (State=="LoadUI") {
         if(Command[1,string] == "setbg") {
             local Vec = Colors[Command[2,string],vector]
             EGP:egpColor(1,Vec)
-            EGP:egpSetText(Current_Line+12,"> Setting Background Color to "+Vec)
+            BGCOLOR=Vec
+            EGP:egpSetText(Current_Line+12,"Setting Background Color to "+Vec)
             Current_Line++
             dhddservice_write(1,Vec)
         }
         elseif(Command[1,string] == "setfg") {
             local Vec = Colors[Command[2,string],vector]
+            FGCOLOR=Vec
             EGP:egpColor(10,Vec) 
             EGP:egpColor(11,Vec) 
             EGP:egpColor(12,Vec) 
             for(I = 1,Max_Lines) {
                 EGP:egpColor(I+12,Vec) 
             }
-            EGP:egpSetText(Current_Line+12,"> Setting Foreground Color to "+Vec)
-            Current_Line++
-            dhddservice_write(2,Vec)
         }
-
+            elseif(Command[1,string] == "setfgs") {
+            local Vec = Colors[Command[2,string],vector]
+            FGSCOLOR=Vec
+            EGP:egpSetText(Current_Line+12,"Setting Secondany Foreground Color to "+Vec)
+            Current_Line++
+            dhddservice_write(3,Vec)
+        }
+        #WIP
+         #elseif(Command[1,string] == "GUI") {
+     #       State="GUI"
+      #  }
+        elseif(Command[1,string] == "Reset") {
+            reset()
+        }
+        elseif(Command[1,string] == "RIO") {
+            if (Command[2,string] != "RD") {
+            local Number = (Command[2,string]):toNumber()
+            local V = ramservice_read(Number)
+            local V = ramservice_read(Number)
+            if (Datafound==1) {
+            EGP:egpSetText(Current_Line+12,"IO Value "+Number+"="+V)
+            local V = ramservice_read(0)
+            Current_Line++
+        }else {
+            local V = ramservice_read(Number)
+            EGP:egpSetText(Current_Line+12,"IO Value "+Number+"="+V)
+            Current_Line++
+        }
+            }else {
+            EGP:egpSetText(Current_Line+12,"This Command Jest got 20% Cooler")
+            Current_Line++
+        }
+    
+        }
+        elseif(Command[1,string] == "WIO") {
+            local Number = (Command[2,string]):toNumber()
+            local Number2 = (Command[3,string]):toNumber()
+            ramservice_Write(Number,Number2)
+            EGP:egpSetText(Current_Line+12,"IO Value "+Number+" Set to "+Number2)
+            Current_Line++
+        }
+        elseif(Command[1,string] == "MP3") {
+            local Song= Command[2,string]
+            if (Song != "Stop") {
+            local Time = soundDuration(Song)
+            entity():streamStart(1,Song,90000)
+            EGP:egpSetText(Current_Line+12,"Now Playing "+Song)
+        } else {
+        EGP:egpSetText(Current_Line+12,"Stoping Songs")
+        streamStop(1)
+        }
+        Current_Line++
+        }
+        elseif(Command[1,string] == "E2") {
+            entity():remoteUpload(Command[2,string])
+            egpClearQueue()
+        }
+        elseif(Command[1,string] == "Calc") {
+            local Number1=Command[2,string]:toNumber()
+            local OP=Command[3,string]
+            local Number2=Command[4,string]:toNumber()
+            if (OP=="*" | OP=="X") {
+              local Output=Number1*Number2
+            EGP:egpSetText(Current_Line+12,Output:toString())
+        }elseif (OP=="/") {
+            if (Number1!=0&Number2!=0) {
+            local Output=Number1/Number2
+            EGP:egpSetText(Current_Line+12,Output:toString())
+            Current_Line++
+        }else {
+        EGP:egpSetText(Current_Line+12,"Enjoy Some Music By NCS")
+        entity():streamStart(1,"https://www.dropbox.com/s/gi9rc9aebngwfev/David%20Bulla%20-%20Unexpected%20_NCS%20Release_.mp3?raw=1")
+            Current_Line++
+        }
+    }
 }
+elseif(Command[1,string] == "Debug") {
+    error("debug")
+}elseif(Command[1,string] == "SS") {
+    State=Command[3,string]
+}
+        }
+}
+
 
 if(clk("DWrite")) {
     DHHD["AllowWrite",number] = 0
+}
+if (State=="GUI") {
+    EGP:egpClear()
+    EGP:egpBox(1,vec2(512)/2,vec2(512))
+    EGP:egpColor(1,BGCOLOR)
+    mouseservice_LoadCursor()
+    EGP:egpText(3,"RocketOS3",vec2(1,490))
+    EGP:egpText(4,toString(time("min")),vec2(490,490))
+    EGP:egpText(6,toString(time("hour")),vec2(460,490))
+    EGP:egpColor(3,FGCOLOR)
+    EGP:egpColor(4,FGCOLOR)
+    EGP:egpColor(6,FGCOLOR)
+    State="LoadGUI"
+    
+}
+
+if (State=="LoadGUI") {
+        if (mouseservice_LeftClick()|mouseservice_RightClick()) {
+        EGP:egpColor(2,FGCOLOR)
+    }else {
+        EGP:egpColor(2,FGSCOLOR)
+}
+        EGP:egpText(4,toString(time("min")),vec2(490,490))
+        EGP:egpText(6,toString(time("hour")),vec2(460,490))
 }
 
