@@ -216,7 +216,7 @@ if (State=="LoadUI") {
         Current_Line++
         }
         elseif(Command[1,string] == "E2") {
-            entity():remoteUpload(Command[2,string])
+           #ifdef entity():remoteUpload(Command[2,string])
             egpClearQueue()
         }
         elseif(Command[1,string] == "Calc") {
@@ -236,7 +236,9 @@ if (State=="LoadUI") {
             Current_Line++
         }
     }
-}
+}        elseif(Command[1,string] == "Ver") {
+            EGP:egpSetText(Current_Line+12,"RocketOS 3.0.4")
+        }
 elseif(Command[1,string] == "Debug") {
     error("debug")
 }elseif(Command[1,string] == "SS") {
