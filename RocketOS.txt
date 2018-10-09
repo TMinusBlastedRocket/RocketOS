@@ -85,7 +85,7 @@ if (first() & Power==1 | duped() & Power==1) {
     local FG = dhddservice_readVec(2)
     if(FG == vec(0)) {FG = vec(255)}
     EGP:egpText(10,"Loading Core Services ",vec2(1,1))  ,EGP:egpColor(10,FG) 
-    EGP:egpText(11,"Loading RocketOS3 Shell",vec2(1,15)),EGP:egpColor(11,FG) 
+    EGP:egpText(11,"Loading RocketOS 3.0.1 Shell",vec2(1,15)),EGP:egpColor(11,FG) 
     EGP:egpText(12,"Copyright (c) Team TMinus",vec2(1,30))                       ,EGP:egpColor(12,FG) 
     
 
@@ -103,7 +103,7 @@ if (first() & Power==1 | duped() & Power==1) {
     FGSCOLOR=vec(255,255,255)
     State="LoadUI"
 }elseif (changed(Power) == 1 & State!="LoadServerUI" & changed(Power) == 1 & State!="LoadUI") {
-    reset()
+    #reset() So Broken Thanks to SS
 }elseif (Power==0) {
     
     EGP:egpClear()
@@ -232,8 +232,7 @@ if (State=="LoadUI") {
             EGP:egpSetText(Current_Line+12,Output:toString())
             Current_Line++
         }else {
-        EGP:egpSetText(Current_Line+12,"Enjoy Some Music By NCS")
-        entity():streamStart(1,"https://www.dropbox.com/s/gi9rc9aebngwfev/David%20Bulla%20-%20Unexpected%20_NCS%20Release_.mp3?raw=1")
+          EGP:egpSetText(Current_Line+12,"No Dont")
             Current_Line++
         }
     }
