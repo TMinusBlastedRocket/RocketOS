@@ -169,9 +169,9 @@ if (State=="LoadUI") {
             Current_Line++
             dhddservice_write(3,Vec)
         }
-        #WIP
+        #Disabled
          #elseif(Command[1,string] == "GUI") {
-     #       State="GUI"
+     #       State="LOadGUI"
       #  }
         elseif(Command[1,string] == "Reset") {
             reset()
@@ -249,7 +249,7 @@ elseif(Command[1,string] == "Debug") {
 if(clk("DWrite")) {
     DHHD["AllowWrite",number] = 0
 }
-if (State=="GUI") {
+if (State=="LoadGUI") {
     EGP:egpClear()
     EGP:egpBox(1,vec2(512)/2,vec2(512))
     EGP:egpColor(1,BGCOLOR)
@@ -260,11 +260,11 @@ if (State=="GUI") {
     EGP:egpColor(3,FGCOLOR)
     EGP:egpColor(4,FGCOLOR)
     EGP:egpColor(6,FGCOLOR)
-    State="LoadGUI"
+    State="GUI"
     
 }
 
-if (State=="LoadGUI") {
+if (State=="GUI") {
         if (mouseservice_LeftClick()|mouseservice_RightClick()) {
         EGP:egpColor(2,FGCOLOR)
     }else {
