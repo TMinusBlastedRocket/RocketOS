@@ -207,7 +207,7 @@ if (State=="LoadUI") {
             local Song= Command[2,string]
             if (Song != "Stop") {
             local Time = soundDuration(Song)
-            entity():streamStart(1,Song,90000)
+           #ifdef entity():streamStart(1,Song,90000)
             EGP:egpSetText(Current_Line+12,"Now Playing "+Song)
         } else {
         EGP:egpSetText(Current_Line+12,"Stoping Songs")
