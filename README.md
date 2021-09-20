@@ -1,5 +1,4 @@
-# RocketOS
-A E2 OS that is command-line based on on the cutting edge of E2 Powered by the RocketCore Codebase
+An E2 command line I made long ago, I'm not even sure if it works
 
 
 
